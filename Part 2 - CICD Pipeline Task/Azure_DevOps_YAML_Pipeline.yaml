@@ -1,0 +1,42 @@
+trigger:
+  branches:
+    include:
+      - main  # Trigger pipeline when a commit is made to the main branch
+
+pool:
+  vmImage: 'ubuntu-latest'  # Ubuntu LTS VM for running the pipeline
+
+stages:
+  - stage: TerraformInitPlanApply
+    displayName: 'Terraform Deploy'
+    jobs:
+      - job: DeployTerraform
+        displayName: 'Deploy Terraform Infrastructure'
+        steps:
+
+          # Step 1: Install Terraform using Azure DevOps built-in task
+          - task: TerraformInstaller@0
+            inputs:
+              terraformVersion: '1.9.6'  # This is the latest Terraform version
+
+          # Step 2: Checkout the source code (includes Terraform files)
+          - checkout: self
+
+          # Step 3: Initialize Terraform backend and modules
+          - script: |
+              terraform init
+            displayName: 'Terraform Init'
+
+          # Step 4: Run Terraform plan to preview infrastructure changes
+          - script: |
+              terraform plan -out=tfplan
+            displayName: 'Terraform Plan'
+
+          # Step 5: Apply the Terraform plan to deploy the infrastructure
+          - script: |
+              terraform apply -auto-approve tfplan
+            displayName: 'Terraform Apply'
+
+          # Step 6: Save the Terraform state or artifacts
+          - publish: $(System.DefaultWorkingDirectory)/terraform.tfstate
+            artifact: terraform_state
